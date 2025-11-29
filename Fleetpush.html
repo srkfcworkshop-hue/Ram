@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>FleetPush PRO — SRKFC WORKSHOP (Auto-Due Final)</title>
+<style>
+  :root{
+    --bg:#f4f7fb; --sidebar:#07122a; --accent:#0ea5a5; --card:#ffffff;
+    --muted:#6b7280; --danger:#fdecea; --primary:#0b74ff;
+  }
+  [data-theme="dark"]{
+    --bg:#071428; --sidebar:#031026; --card:#061226; --accent:#1fb6b6; --muted:#9aa6bd; --primary:#1e90ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:var(--bg);color:var(--muted);min-height:100vh}
+  .app{display:flex;min-height:100vh}
+  .sidebar{
+    width:260px;background:linear-gradient(180deg,#031026 0%, #07122a 100%);
+    color:#dbeafe;padding:20px;display:flex;flex-direction:column;gap:12px;
+  }
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand img{width:48px;height:48px;border-radius:8px;background:#fff;padding:6px;object-fit:contain}
+  .brand h1{font-size:18px;margin:0;color:#fff}
+  .menu{margin-top:6px;display:flex;flex-direction:column;gap:6px}
+  .menu button{background:transparent;border:0;color:#dbeafe;text-align:left;padding:10px;border-radius:8px;cursor:pointer;font-weight:700}
+  .menu button:hover{background:rgba(255,255,255,0.03)}
+  .small{font-size:13px;color:var(--muted)}
+  main{flex:1;padding:22px;overflow:auto}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+  .card{background:var(--card);padding:16px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.08);color:var(--muted)}
+  h2{margin:0 0 12px;color:inherit}
+  label{display:block;margin-top:8px;font-weight:700;color:inherit}
+  input,select,textarea,button{font-family:inherit}
+  input,select,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #e6eef7;margin-top:8px;background:transparent}
+  textarea{min-height:100px}
+  button.primary{background:var(--primary);color:#fff;border-radius:10px;padding:10px 14px;border:0;cursor:pointer}
+  button.ghost{background:transparent;border:1px solid rgba(0,0,0,0.06);padding:8px;border-radius:8px}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .col-1{flex:1;min-width:200px}
+  .col-2{flex:2;min-width:300px}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{padding:10px;border-bottom:1px solid #eef3fb;text-align:left;color:var(--muted)}
+  .veh-suggestions{position:absolute;left:0;right:0;top:100%;background:#fff;border-radius:8px;box-shadow:0 8px 30px rgba(2,6,23,0.08);max-height:220px;overflow:auto;z-index:999}
+  .veh-suggestions div{padding:10px;cursor:pointer}
+  .veh-suggestions div:hover{background:#f1f8ff}
+  #loginModal{position:fixed;inset:0;background:rgba(3,6,23,0.5);display:flex;align-items:center;justify-content:center;z-index:9999}
+  #loginBox{width:420px;background:var(--card);border-radius:12px;padding:20px;box-shadow:0 12px 40px rgba(2,6,23,0.2)}
+  .center{display:flex;align-items:center;gap:8px}
+  .hidden{display:none}
+  @media(max-width:900px){ .sidebar{display:none} .row{flex-direction:column} .brand h1{font-size:16px} }
+  @media print{ body *{visibility:hidden} #printArea, #printArea *{visibility:visible} #printArea{position:fixed;left:0;top:0;width:100%} }
+</style>
+</head>
+<body data-theme="light">
+
+<!-- Hidden file inputs -->
+<input type="file" id="logoUpload" accept="image/*" style="display:none">
+<input type="file" id="csvImport" accept=".csv,text/csv" style="display:none">
+
+<!-- LOGIN modal -->
+<div id="loginModal">
+  <div id="loginBox">
+    <div class="center" style="justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:12px">
+        <img id="loginLogoPreview" src="" alt="logo" style="width:56px;height:56px;border-radius:10px;background:#fff;padding:6px" />
+        <div>
+          <div style="font-weight:800;font-size:18px;color:#000">SRKFC WORKSHOP</div>
+          <div class="small">FleetPush PRO — Login</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:16px">
+      <label>Username</label>
+      <input id="loginUser" value="admin" />
+      <label>Password</label>
+      <input id="loginPass" type="password" value="password" />
+      <div class="center" style="margin-top:12px;justify-content:flex-end">
+        <button class="primary" onclick="doLogin()">Login</button>
+        <button class="ghost" onclick="demoOpen()">Demo</button>
+      </div>
+      <div id="loginErr" style="color:#b21;margin-top:10px;display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP ROOT -->
+<div class="app hidden" id="appRoot">
+  <aside class="sidebar">
+    <div class="brand">
+      <img id="sideLogo" src="" alt="logo" />
+      <div>
+        <h1>SRKFC WORKSHOP</h1>
+        <div class="small">FleetPush PRO</div>
+      </div>
+    </div>
+
+    <button onclick="document.getElementById('logoUpload').click()" class="ghost">Upload Logo</button>
+
+    <div class="menu">
+      <button onclick="nav('dashboard')">Dashboard</button>
+      <button onclick="nav('service')">Service Master</button>
+      <button onclick="nav('vehicle')">Vehicle Master</button>
+      <button onclick="nav('jobcard')">Job Card Master</button>
+      <button onclick="nav('reports')">Reports</button>
+      <button onclick="nav('settings')">Settings</button>
+    </div>
+
+    <div style="margin-top:auto">
+      <div class="small" style="margin-bottom:8px">Logged as: <strong id="whoAmI">admin</strong></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label class="small">Theme</label>
+        <select id="themeSel" onchange="toggleTheme()">
+          <option value="light">Light</option><option value="dark">Dark</option>
+        </select>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <div class="small">FleetPush PRO — SRKFC WORKSHOP</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label class="small">Auto CSV</label>
+        <input type="checkbox" id="autoCsv" />
+        <button class="primary" onclick="exportCSV('all')">Export All CSV</button>
+      </div>
+    </div>
+
+    <!-- Pages -->
+    <section id="page-dashboard" class="card page">
+      <h2>Dashboard</h2>
+      <div class="row" id="dashCards" style="margin-top:12px"></div>
+      <div style="margin-top:12px">
+        <h3>Due Vehicles</h3>
+        <div id="dueList" style="margin-top:8px"></div>
+      </div>
+    </section>
+
+    <section id="page-service" class="card page hidden">
+      <h2>Service Master</h2>
+      <div class="row">
+        <div class="col-1 veh-sug-wrap">
+          <label>Vehicle</label>
+          <input id="s_vehicle" placeholder="Enter vehicle no" autocomplete="off" />
+          <div id="s_veh_sug" class="veh-suggestions hidden"></div>
+        </div>
+        <div class="col-1">
+          <label>Service Type</label>
+          <select id="s_type"></select>
+        </div>
+        <div class="col-1">
+          <label>KM</label>
+          <input id="s_km" type="number" />
+        </div>
+        <div class="col-1">
+          <label>Date</label>
+          <input id="s_date" type="date" />
+        </div>
+      </div>
+      <div style="margin-top:12px"><button class="primary" onclick="addServiceEntry()">Add Entry</button></div>
+
+      <hr style="margin:16px 0">
+
+      <h3>Service History</h3>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <input id="serviceFilter" placeholder="Filter by vehicle or service" oninput="renderServiceHistory()" />
+        <label class="small">From</label><input id="svcFrom" type="date" onchange="renderServiceHistory()" />
+        <label class="small">To</label><input id="svcTo" type="date" onchange="renderServiceHistory()" />
+      </div>
+      <table><thead><tr><th>Vehicle</th><th>Service</th><th>KM</th><th>Date</th><th>Next Due</th><th>Delete</th></tr></thead><tbody id="serviceHistoryBody"></tbody></table>
+    </section>
+
+    <section id="page-vehicle" class="card page hidden">
+      <h2>Vehicle Master</h2>
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <div style="width:180px">
+          <label>Vehicle No</label><input id="v_no" />
+        </div>
+        <div style="width:180px">
+          <label>Model</label><input id="v_model" />
+        </div>
+        <div style="width:140px">
+          <label>Year</label><input id="v_year" type="number" />
+        </div>
+        <div style="width:160px">
+          <label>Current KM</label><input id="v_km" type="number" placeholder="e.g. 250000" />
+        </div>
+        <div><button class="primary" onclick="saveVehicle()">Add Vehicle</button></div>
+        <div><button onclick="document.getElementById('csvImport').click()" class="ghost">Import CSV</button></div>
+      </div>
+
+      <hr style="margin:14px 0">
+      <table><thead><tr><th>Vehicle</th><th>Model</th><th>Year</th><th>Current KM</th><th>Action</th></tr></thead><tbody id="vehicleBody"></tbody></table>
+    </section>
+
+    <section id="page-jobcard" class="card page hidden">
+      <h2>Job Card Master</h2>
+      <div style="margin-top:8px"><button class="primary" onclick="openJobCardForm()">New Job Card</button></div>
+
+      <div id="jobcardForm" class="hidden" style="margin-top:12px">
+        <div class="row">
+          <div class="col-1"><label>Job Card No</label><input id="jc_no" readonly /></div>
+          <div class="col-1"><label>Date</label><input id="jc_date" type="date" /></div>
+        </div>
+        <div class="row">
+          <div class="col-2 veh-sug-wrap"><label>Vehicle</label><input id="jc_vehicle" autocomplete="off" /><div id="jc_veh_sug" class="veh-suggestions hidden"></div></div>
+          <div class="col-1"><label>KM</label><input id="jc_km" type="number" /></div>
+        </div>
+        <label>Work Details</label><textarea id="jc_work"></textarea>
+        <div style="margin-top:8px"><button class="primary" onclick="saveJobCard()">Save Job Card</button> <button class="ghost" onclick="closeJobCardForm()">Cancel</button></div>
+      </div>
+
+      <hr style="margin:12px 0">
+      <input id="jcFilter" placeholder="Filter job cards" oninput="renderJobcardTable()" />
+      <table><thead><tr><th>JC No</th><th>Date</th><th>Vehicle</th><th>KM</th><th>Work</th><th>Action</th></tr></thead><tbody id="jobcardBody"></tbody></table>
+    </section>
+
+    <section id="page-reports" class="card page hidden">
+      <h2>Reports</h2>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+        <button class="primary" onclick="exportCSV('jobcards')">Export Jobcards CSV</button>
+        <button class="primary" onclick="exportCSV('services')">Export Services CSV</button>
+        <button class="primary" onclick="exportCSV('vehicles')">Export Vehicles CSV</button>
+        <button class="ghost" onclick="print()">Print View</button>
+      </div>
+
+      <h3>Job Card Report</h3>
+      <table><thead><tr><th>JC</th><th>Date</th><th>Vehicle</th><th>KM</th><th>Work</th><th>Print</th></tr></thead><tbody id="reportJobBody"></tbody></table>
+
+      <h3 style="margin-top:12px">Service Report</h3>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <input id="rFilterVehicle" placeholder="Vehicle" oninput="renderReports()" />
+        <select id="rFilterType" onchange="renderReports()"><option value="">All Types</option></select>
+        <label class="small">Only Due</label><input type="checkbox" id="rOnlyDue" onchange="renderReports()" />
+      </div>
+      <table><thead><tr><th>Vehicle</th><th>Service</th><th>KM</th><th>Date</th><th>Next Due</th></tr></thead><tbody id="reportServiceBody"></tbody></table>
+    </section>
+
+    <section id="page-settings" class="card page hidden">
+      <h2>Settings</h2>
+      <div style="display:flex;gap:12px;align-items:end">
+        <div style="flex:1"><label>Service name</label><input id="stype_name" placeholder="Engine Oil" /></div>
+        <div style="width:180px"><label>Interval KM</label><input id="stype_interval" type="number" /></div>
+        <div style="width:120px"><button class="primary" onclick="addServiceType()">Add Type</button></div>
+      </div>
+
+      <hr style="margin:12px 0">
+      <h3>Available Service Types</h3>
+      <table><thead><tr><th>Service</th><th>Interval (KM)</th><th>Action</th></tr></thead><tbody id="stype_body"></tbody></table>
+
+      <hr style="margin:12px 0">
+      <h3>Default Intervals</h3>
+      <div style="display:flex;gap:12px">
+        <div style="flex:1"><label>Engine Oil</label><input id="set_oil" type="number" /></div>
+        <div style="flex:1"><label>Hub Greasing</label><input id="set_hub" type="number" /></div>
+        <div style="flex:1"><label>Air Filter</label><input id="set_air" type="number" /></div>
+      </div>
+      <div style="margin-top:8px"><button class="primary" onclick="saveSettings()">Save Settings</button></div>
+    </section>
+
+    <div id="printArea" class="hidden"></div>
+  </main>
+</div>
+
+<script>
+/* ===== Storage keys & initial data ===== */
+const K_V='fp_v', K_S='fp_s', K_J='fp_j', K_T='fp_t', K_SET='fp_set', K_LOG='fp_logo';
+let vehicles = JSON.parse(localStorage.getItem(K_V) || '[]'); // each: {no,model,year,current_km}
+let services = JSON.parse(localStorage.getItem(K_S) || '[]'); // each: {veh,st,km,date,nextDue}
+let jobcards = JSON.parse(localStorage.getItem(K_J) || '[]'); // each: {jc,date,vehicle,km,work}
+let serviceTypes = JSON.parse(localStorage.getItem(K_T) || '[]'); // each: {name,interval}
+let settings = JSON.parse(localStorage.getItem(K_SET) || JSON.stringify({oil:80000,hub:100000,air:20000}));
+
+if(!serviceTypes || serviceTypes.length===0){
+  serviceTypes = [
+    {name:'Engine Oil', interval:10000},
+    {name:'Hub Greasing', interval:100000},
+    {name:'Air Filter', interval:30000}
+  ];
+  localStorage.setItem(K_T, JSON.stringify(serviceTypes));
+}
+
+/* ===== DOM refs ===== */
+const loginModal = document.getElementById('loginModal');
+const appRoot = document.getElementById('appRoot');
+
+/* ===== Logo upload handling ===== */
+document.getElementById('logoUpload').addEventListener('change', function(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = function(){ const data = r.result; document.getElementById('loginLogoPreview').src = data; document.getElementById('sideLogo').src = data; localStorage.setItem(K_LOG, data); };
+  r.readAsDataURL(f);
+});
+const savedLogo = localStorage.getItem(K_LOG);
+if(savedLogo){ document.getElementById('loginLogoPreview').src = savedLogo; document.getElementById('sideLogo').src = savedLogo; }
+
+/* ===== LOGIN (fixed) ===== */
+function doLogin(){
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value.trim();
+  if(u === 'admin' && p === 'password'){
+    loginModal.style.display='none';
+    document.getElementById('appRoot').classList.remove('hidden');
+    document.getElementById('whoAmI').innerText = u;
+    initApp();
+  } else {
+    const err = document.getElementById('loginErr');
+    err.style.display='block';
+    err.innerText='Invalid credentials — use admin / password';
+  }
+}
+function demoOpen(){ loginModal.style.display='none'; document.getElementById('appRoot').classList.remove('hidden'); document.getElementById('whoAmI').innerText = 'demo'; initApp(); }
+
+/* ===== NAVIGATION ===== */
+function nav(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));
+  const el = document.getElementById('page-'+page);
+  if(el) el.classList.remove('hidden');
+
+  // explicit per-page render
+  if(page==='dashboard') renderDashboard();
+  if(page==='service') { renderServiceSelects(); renderServiceHistory(); }
+  if(page==='vehicle') renderVehicleTable();
+  if(page==='jobcard') renderJobcardTable();
+  if(page==='reports') renderReports();
+  if(page==='settings') renderServiceTypes();
+}
+
+/* ===== Persistence ===== */
+function saveAll(){
+  localStorage.setItem(K_V, JSON.stringify(vehicles));
+  localStorage.setItem(K_S, JSON.stringify(services));
+  localStorage.setItem(K_J, JSON.stringify(jobcards));
+  localStorage.setItem(K_T, JSON.stringify(serviceTypes));
+  localStorage.setItem(K_SET, JSON.stringify(settings));
+}
+
+/* ===== Vehicle functions (with current_km) ===== */
+function saveVehicle(){
+  const no = (document.getElementById('v_no').value||'').trim().toUpperCase();
+  const model = (document.getElementById('v_model').value||'').trim();
+  const year = (document.getElementById('v_year').value||'').trim();
+  const curkm = Number(document.getElementById('v_km').value||0);
+  if(!no || !model || !year){ alert('Fill vehicle details'); return; }
+  const existing = vehicles.find(v=>v.no===no);
+  if(existing){
+    existing.model = model; existing.year = year; existing.current_km = curkm;
+  } else {
+    vehicles.push({no,model,year,current_km:curkm});
+  }
+  saveAll();
+  document.getElementById('v_no').value=''; document.getElementById('v_model').value=''; document.getElementById('v_year').value=''; document.getElementById('v_km').value='';
+  renderVehicleTable(); renderAutocompleteSources(); triggerAutoExport();
+}
+function renderVehicleTable(){
+  const body = document.getElementById('vehicleBody'); if(!body) return;
+  body.innerHTML = '';
+  vehicles.forEach((v,i)=> body.innerHTML += `<tr><td>${escapeHtml(v.no)}</td><td>${escapeHtml(v.model)}</td><td>${escapeHtml(v.year)}</td><td>${v.current_km||0}</td><td><button onclick="editVehicle(${i})">Edit</button> <button onclick="deleteVehicle(${i})" class="ghost">Delete</button></td></tr>`);
+}
+function editVehicle(i){
+  const v = vehicles[i];
+  const nm = prompt('Edit model', v.model);
+  if(nm!==null) v.model = nm.trim();
+  const yr = prompt('Edit year', v.year);
+  if(yr!==null) v.year = yr.trim();
+  const ck = prompt('Edit current KM', v.current_km||'0');
+  if(ck!==null) v.current_km = Number(ck) || 0;
+  saveAll(); renderVehicleTable(); renderAutocompleteSources();
+}
+const fsIndex = {}; // helper map to preserve insertion index for delete actions
+function deleteVehicle(i){ if(!confirm('Delete vehicle?')) return; vehicles.splice(i,1); saveAll(); renderVehicleTable(); renderAutocompleteSources(); }
+
+/* ===== CSV Import (vehicles) ===== */
+const csvImport = document.getElementById('csvImport');
+if(csvImport){
+  csvImport.addEventListener('change', function(e){
+    const f = e.target.files[0]; if(!f) return;
+    const r = new FileReader();
+    r.onload=function(){ parseVehiclesCSV(r.result); };
+    r.readAsText(f);
+  });
+}
+function parseVehiclesCSV(text){
+  const rows = text.replace(/\r/g,'').split('\n').map(r=>r.trim()).filter(r=>r);
+  const data = rows.slice(1).map(r=> r.split(',').map(c=> c.replace(/^"|"$/g,'').trim()));
+  data.forEach(d=>{ if(d[0]){ const no=d[0].toUpperCase(), model=d[1]||'', year=d[2]||'', cur = Number(d[3]||0); const existing = vehicles.find(v=>v.no===no); if(!existing) vehicles.push({no,model,year,current_km:cur}); else { existing.model=model; existing.year=year; existing.current_km = cur; } }});
+  saveAll(); renderVehicleTable(); renderAutocompleteSources(); alert('Imported vehicles'); triggerAutoExport();
+}
+
+/* ===== Service Types ===== */
+function addServiceType(){ const name=(document.getElementById('stype_name').value||'').trim(); const interval=Number(document.getElementById('stype_interval').value||0); if(!name){ alert('Enter service name'); return; } if(!serviceTypes.find(s=>s.name.toLowerCase()===name.toLowerCase())){ serviceTypes.push({name,interval}); saveAll(); document.getElementById('stype_name').value=''; document.getElementById('stype_interval').value=''; renderServiceTypes(); renderServiceSelects(); } else alert('Service exists'); }
+function renderServiceTypes(){ const b=document.getElementById('stype_body'); if(!b) return; b.innerHTML=''; serviceTypes.forEach((s,i)=> b.innerHTML += `<tr><td>${escapeHtml(s.name)}</td><td>${Number(s.interval)||0}</td><td><button onclick="deleteServiceType(${i})" class="ghost">Delete</button></td></tr>`); }
+function deleteServiceType(i){ if(!confirm('Delete service type?')) return; serviceTypes.splice(i,1); saveAll(); renderServiceTypes(); renderServiceSelects(); }
+
+/* ===== Settings ===== */
+function loadSettingsToForm(){ if(document.getElementById('set_oil')){ document.getElementById('set_oil').value = settings.oil; document.getElementById('set_hub').value = settings.hub; document.getElementById('set_air').value = settings.air; } }
+function saveSettings(){ settings.oil = Number(document.getElementById('set_oil').value || settings.oil); settings.hub = Number(document.getElementById('set_hub').value || settings.hub); settings.air = Number(document.getElementById('set_air').value || settings.air); saveAll(); alert('Saved'); }
+
+/* ===== Service entries ===== */
+function renderServiceSelects(){ const sel=document.getElementById('s_type'); if(!sel) return; sel.innerHTML=''; serviceTypes.forEach(s=> sel.innerHTML += `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)}</option>`); const rf=document.getElementById('rFilterType'); if(rf) rf.innerHTML = '<option value="">All Types</option>' + serviceTypes.map(s=>`<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)}</option>`).join(''); }
+
+/* Add service entry: calculates nextDue = km + interval and stores it on the service record.
+   When service is added it will remove any due flag for that vehicle+service type because nextDue moved forward.
+*/
+function addServiceEntry(){
+  const veh=(document.getElementById('s_vehicle').value||'').trim().toUpperCase();
+  const st=document.getElementById('s_type').value;
+  const km=Number(document.getElementById('s_km').value||0);
+  const date=document.getElementById('s_date').value||new Date().toISOString().slice(0,10);
+  if(!veh){ alert('Enter vehicle'); return; }
+  const existing = vehicles.find(v=>v.no===veh);
+  if(!existing) vehicles.push({no:veh,model:'',year:'',current_km:km});
+  else existing.current_km = Math.max(existing.current_km||0, km);
+
+  // compute nextDue and store on this service record
+  const stDef = serviceTypes.find(x=>x.name===st);
+  const interval = stDef ? Number(stDef.interval||0) : 0;
+  const nextDue = (Number(km) || 0) + (interval || 0);
+
+  services.push({veh,st,km,date,nextDue});
+  saveAll();
+  document.getElementById('s_km').value=''; document.getElementById('s_date').value='';
+  renderServiceHistory(); renderVehicleTable(); renderAutocompleteSources();
+  alert('Service added and next due set to ' + nextDue);
+  triggerAutoExport();
+}
+
+/* Next due for a service entry (fallback) */
+function calcNextForService(s){ if(s.nextDue) return Number(s.nextDue)||0; const st=serviceTypes.find(x=>x.name===s.st); return (Number(s.km)||0) + (Number(st?.interval||0)); }
+
+function renderServiceHistory(){ const body=document.getElementById('serviceHistoryBody'); if(!body) return; body.innerHTML=''; const filter = (document.getElementById('serviceFilter')?.value||'').trim().toLowerCase(); const from = document.getElementById('svcFrom')?.value; const to = document.getElementById('svcTo')?.value; services.slice().reverse().forEach((s, idx)=>{ if(filter && !(`${s.veh} ${s.st}`.toLowerCase().includes(filter))) return; if(from && s.date < from) return; if(to && s.date > to) return; const globalIndex = services.indexOf(s); body.innerHTML += `<tr><td>${escapeHtml(s.veh)}</td><td>${escapeHtml(s.st)}</td><td>${s.km}</td><td>${escapeHtml(s.date)}</td><td>${calcNextForService(s)}</td><td><button onclick="deleteService(${globalIndex})">Delete</button></td></tr>`; }); }
+
+/* ===== delete service function ===== */
+function deleteService(i){
+  if(i < 0 || i >= services.length) return;
+  if(!confirm('Delete this service entry?')) return;
+  services.splice(i,1);
+  saveAll();
+  renderServiceHistory();
+  renderDashboard();
+  renderReports();
+}
+
+/* ===== Jobcards ===== */
+function openJobCardForm(){ const jf = document.getElementById('jobcardForm'); if(!jf) return; jf.classList.remove('hidden'); document.getElementById('jc_no').value = 'JC-' + String(jobcards.length+1).padStart(4,'0'); document.getElementById('jc_date').value = new Date().toISOString().slice(0,10); const v = document.getElementById('jc_vehicle'); const last = getLatestKm(v.value||''); if(last>0) document.getElementById('jc_km').value = last; }
+function closeJobCardForm(){ const jf = document.getElementById('jobcardForm'); if(jf) jf.classList.add('hidden'); }
+function saveJobCard(){ const jc=document.getElementById('jc_no').value; const date=document.getElementById('jc_date').value||new Date().toISOString().slice(0,10); const vehicle=(document.getElementById('jc_vehicle').value||'').trim().toUpperCase(); const km=Number(document.getElementById('jc_km').value||0); const work=document.getElementById('jc_work').value||''; if(!vehicle){ alert('Enter vehicle'); return; } const existing = vehicles.find(v=>v.no===vehicle); if(!existing) vehicles.push({no:vehicle,model:'',year:'',current_km:km}); else existing.current_km = Math.max(existing.current_km||0, km); jobcards.push({jc,date,vehicle,km,work}); saveAll(); renderJobcardTable(); renderVehicleTable(); renderDashboard(); renderAutocompleteSources(); if(document.getElementById('jc_km')) document.getElementById('jc_km').value=''; if(document.getElementById('jc_work')) document.getElementById('jc_work').value=''; closeJobCardForm(); triggerAutoExport(); }
+
+/* render jobcards and provide delete button for jobcards */
+function renderJobcardTable(){ const b=document.getElementById('jobcardBody'); if(!b) return; b.innerHTML=''; const q=(document.getElementById('jcFilter')?.value||'').toLowerCase(); jobcards.slice().reverse().forEach((j, idx)=>{ if(q && !(`${j.jc} ${j.vehicle} ${j.work}`.toLowerCase().includes(q))) return; const globalIndex = jobcards.indexOf(j); b.innerHTML += `<tr><td>${escapeHtml(j.jc)}</td><td>${escapeHtml(j.date)}</td><td>${escapeHtml(j.vehicle)}</td><td>${j.km}</td><td>${escapeHtml(j.work)}</td><td><button onclick="printJobCard('${j.jc.replace(/'/g,"\\'")}')">Print</button> <button onclick="deleteJobcard(${globalIndex})" class="ghost">Delete</button></td></tr>`; }); const rep = document.getElementById('reportJobBody'); if(rep) rep.innerHTML = b.innerHTML; }
+
+/* delete jobcard */
+function deleteJobcard(i){
+  if(i < 0 || i >= jobcards.length) return;
+  if(!confirm('Delete this job card?')) return;
+  jobcards.splice(i,1);
+  saveAll();
+  renderJobcardTable();
+  renderDashboard();
+  renderReports();
+}
+
+/* ===== getLatestKm helper ===== */
+function getLatestKm(vehicle){
+  if(!vehicle) return 0;
+  const v = vehicle.trim().toUpperCase();
+  let max=0;
+  const vehObj = vehicles.find(x=>x.no===v);
+  if(vehObj && Number(vehObj.current_km)) max = Math.max(max, Number(vehObj.current_km)||0);
+  jobcards.forEach(j=>{ if(j.vehicle===v) max = Math.max(max, Number(j.km)||0); });
+  services.forEach(s=>{ if(s.veh===v) max = Math.max(max, Number(s.km)||0); });
+  return max;
+}
+
+/* ===== Auto-Due calc (JOB CARD-triggered logic requested) =====
+   Explanation of algorithm:
+   - Each service record stores nextDue = serviceKM + interval when added.
+   - When jobcard is created, we check all service types for that vehicle:
+       If jobcard.km >= someService.nextDue -> mark that service type as DUE.
+   - Dashboard shows DUE items aggregated per vehicle.
+   - When a new service entry is added for that vehicle+service type, we push a new service record
+     with new nextDue (serviceKM + interval) which will remove previous due condition.
+*/
+function computeDueFull(){
+  const out = [];
+  vehicles.forEach(v => {
+    const veh = v.no;
+    let currentKM = Number(v.current_km || 0);
+    jobcards.forEach(j => { if (j.vehicle === veh) currentKM = Math.max(currentKM, Number(j.km) || 0); });
+    services.forEach(s => { if (s.veh === veh) currentKM = Math.max(currentKM, Number(s.km) || 0); });
+
+    // collect nextDue per service type (the latest one)
+    const nextDueMap = {};
+    services.filter(s=>s.veh===veh).forEach(s=>{
+      const key = s.st;
+      const nd = Number(s.nextDue || calcNextForService(s) || 0);
+      if(!nextDueMap[key] || nd > nextDueMap[key]) nextDueMap[key] = nd;
+    });
+
+    // If no service entry exists for a type, we consider no nextDue (unless user wants default from settings)
+    serviceTypes.forEach(st => {
+      const interval = Number(st.interval || 0);
+      if(interval <= 0) return;
+      const nd = nextDueMap[st.name]; // may be undefined
+      // If there is a nextDue recorded and any jobcard KM reaches it -> mark due
+      if(nd !== undefined && nd > 0){
+        // Check if any jobcard KM >= nd (trigger)
+        let triggered = false;
+        jobcards.forEach(jc => { if(jc.vehicle===veh && Number(jc.km||0) >= nd) triggered = true; });
+        // Also if currentKM (vehicle odometer) >= nd, count as triggered as well
+        if(currentKM >= nd) triggered = true;
+
+        if(triggered){
+          // push due entry
+          const existing = out.find(x=>x.vehicle===veh);
+          const dueItem = {service: st.name, nextDue: nd, currentKM};
+          if(existing) existing.dues.push(dueItem);
+          else out.push({vehicle:veh,currentKM,dues:[dueItem],due:true});
+        }
+      }
+    });
+  });
+  // ensure vehicles with no dues are included (optional)
+  const final = vehicles.map(v=>{
+    const found = out.find(x=>x.vehicle===v.no);
+    if(found) return found;
+    return {vehicle:v.no,currentKM:v.current_km||0,dues:[],due:false};
+  });
+  return final;
+}
+
+/* ===== Dashboard render ===== */
+function renderDashboard(){
+  const cards=document.getElementById('dashCards'); if(!cards) return;
+  const totalV=vehicles.length, totalS=services.length, totalJ=jobcards.length;
+  const dueAll = computeDueFull();
+  const due = dueAll.filter(x=>x.due);
+  cards.innerHTML = `<div class="card" style="flex:1"><strong>Total Vehicles</strong><div style="font-size:20px">${totalV}</div></div>
+                     <div class="card" style="flex:1"><strong>Total Services</strong><div style="font-size:20px">${totalS}</div></div>
+                     <div class="card" style="flex:1"><strong>Total Job Cards</strong><div style="font-size:20px">${totalJ}</div></div>
+                     <div class="card" style="flex:1;background:${due.length>0? 'var(--danger)':'#eaf5ff'}"><strong>Due</strong><div style="font-size:20px">${due.length}</div></div>`;
+  const dl=document.getElementById('dueList'); if(!dl) return; dl.innerHTML=''; if(due.length===0) dl.innerHTML='<div class="small">No pending dues</div>';
+  due.forEach(d=>{
+    const servicesList = d.dues.map(x=> `${x.service} (due@${x.nextDue})`).join(', ');
+    dl.innerHTML += `<div style="padding:8px;border-bottom:1px solid #eef3fb"><strong>${d.vehicle}</strong> — ${d.currentKM} KM — Due: ${servicesList}</div>`;
+  });
+}
+
+/* ===== Reports/Export ===== */
+function renderReports(){ renderServiceHistory(); renderJobcardTable(); const rs=document.getElementById('reportServiceBody'); if(rs) rs.innerHTML=''; const vf=(document.getElementById('rFilterVehicle')?.value||'').trim().toLowerCase(); const tf=(document.getElementById('rFilterType')?.value||'').trim(); const onlyDue=document.getElementById('rOnlyDue')?.checked; services.slice().reverse().forEach(s=>{ if(vf && !s.veh.toLowerCase().includes(vf)) return; if(tf && s.st!==tf) return; const next = calcNextForService(s); const isDue = next>0 && jobcards.some(j=>j.vehicle===s.veh && Number(j.km||0) >= next); if(onlyDue && !isDue) return; if(rs) rs.innerHTML += `<tr><td>${escapeHtml(s.veh)}</td><td>${escapeHtml(s.st)}</td><td>${s.km}</td><td>${escapeHtml(s.date)}</td><td>${next}</td></tr>`; }); }
+function exportCSV(kind){ let rows=[], filename=kind+'.csv'; if(kind==='jobcards'){ rows=[['JC','Date','Vehicle','KM','Work'], ...jobcards.map(j=>[j.jc,j.date,j.vehicle,j.km,j.work])]; filename='jobcards.csv'; } if(kind==='services'){ rows=[['Vehicle','Service','KM','Date','NextDue'], ...services.map(s=>[s.veh,s.st,s.km,s.date,calcNextForService(s)])]; filename='services.csv'; } if(kind==='vehicles'){ rows=[['Vehicle','Model','Year','CurrentKM'], ...vehicles.map(v=>[v.no,v.model,v.year,v.current_km||0])]; filename='vehicles.csv'; } if(kind==='all'){ exportCSV('vehicles'); exportCSV('services'); exportCSV('jobcards'); return; } const csv = rows.map(r=> r.map(c=> `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n'); const blob = new Blob([csv], {type:'text/csv'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url); }
+
+/* ===== Autocomplete helpers ===== */
+function renderAutocompleteSources(){
+  const list = vehicles.map(v=>v.no);
+  setupSug('s_vehicle','s_veh_sug',list, val=>{ const last=getLatestKm(val); if(last>0) document.getElementById('s_km').value = last; });
+  setupSug('jc_vehicle','jc_veh_sug',list, val=>{ const last=getLatestKm(val); if(last>0) document.getElementById('jc_km').value = last; });
+}
+function setupSug(inputId, boxId, source, onSelect){
+  const inp=document.getElementById(inputId); const box=document.getElementById(boxId);
+  if(!inp || !box) return;
+  inp.addEventListener('input', function(){
+    const q=(this.value||'').trim().toLowerCase(); box.innerHTML=''; if(!q){ box.classList.add('hidden'); return; }
+    const matches = source.filter(v=> v.toLowerCase().includes(q)).slice(0,60);
+    matches.forEach(m=>{ const d=document.createElement('div'); d.innerText=m; d.addEventListener('mousedown', e=>{ e.preventDefault(); inp.value=m; box.classList.add('hidden'); if(onSelect) onSelect(m); }); box.appendChild(d); });
+    box.classList.remove('hidden');
+  });
+  document.addEventListener('click', e=>{ if(!inp.parentElement.contains(e.target)) box.classList.add('hidden'); });
+}
+
+/* ===== Print jobcard ===== */
+function printJobCard(jcNo){
+  const jc = jobcards.find(j=>j.jc===jcNo);
+  if(!jc){ alert('Job card not found'); return; }
+  const html = `<div style="padding:20px;font-family:Arial;color:#111;background:#fff">
+    <h2>SRKFC WORKSHOP</h2><h3>Job Card: ${escapeHtml(jc.jc)}</h3>
+    <div><strong>Date:</strong> ${escapeHtml(jc.date)}</div>
+    <div><strong>Vehicle:</strong> ${escapeHtml(jc.vehicle)}</div><div><strong>KM:</strong> ${jc.km}</div>
+    <div style="margin-top:12px"><strong>Work Details</strong><div style="border:1px solid #ddd;padding:10px;margin-top:6px">${escapeHtml(jc.work)}</div></div></div>`;
+  const w = window.open('','_blank'); w.document.write(html); w.document.close(); w.focus(); setTimeout(()=> w.print(),400);
+}
+
+/* ===== Helpers ===== */
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+function calcNextForService(s){ const st=serviceTypes.find(x=>x.name===s.st); return (Number(s.km)||0) + (Number(st?.interval||0)); }
+function triggerAutoExport(){ if(document.getElementById('autoCsv')?.checked) exportCSV('all'); }
+
+/* ===== Init after login ===== */
+function initApp(){
+  renderServiceTypes(); renderServiceSelects(); renderVehicleTable();
+  renderServiceHistory(); renderJobcardTable(); renderReports();
+  renderDashboard(); renderAutocompleteSources(); loadSettingsToForm();
+  // load logo if saved
+  const logo = localStorage.getItem(K_LOG); if(logo){ const sl=document.getElementById('sideLogo'); if(sl) sl.src = logo; const ll=document.getElementById('loginLogoPreview'); if(ll) ll.src = logo; }
+  // show dashboard
+  document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));
+  const pd = document.getElementById('page-dashboard'); if(pd) pd.classList.remove('hidden');
+}
+
+/* ===== Save before close ===== */
+window.addEventListener('beforeunload', ()=> saveAll());
+
+/* ===== Theme toggle init ===== */
+function toggleTheme(){ const t=document.getElementById('themeSel').value; document.body.setAttribute('data-theme', t); localStorage.setItem('fp_theme', t); }
+(function(){ const t=localStorage.getItem('fp_theme')||'light'; const ts=document.getElementById('themeSel'); if(ts) ts.value=t; document.body.setAttribute('data-theme', t); })();
+
+</script>
+</body>
+</html>
